@@ -7,10 +7,14 @@
 #   pushns              Push current context namespace onto stack
 #   pushns foo          Push 'foo' onto stack and switch to it
 #   popns               Pop top namespace, switch to it
+#   swapns              Swap top of stack with current namespace
+#   switchns <letter>   Switch to a stack entry's namespace (stack unchanged)
+#   movens <l1> <l2>    Swap two stack entries by letter (namespace unchanged)
 #   peekns              Show the stack (a=top, b=top-1, ...)
-#   k get pods -n a     Equivalent to: kubectl get pods -n <top of stack>
-#   k get pods -n c     Equivalent to: kubectl get pods -n <third on stack>
-#   k get pods -n foo   Works normally for non-single-letter args
+#   clearns             Clear the entire stack
+#   k get pods -n @a    Equivalent to: kubectl get pods -n <top of stack>
+#   k get pods -n @c    Equivalent to: kubectl get pods -n <third on stack>
+#   k get pods -n foo   Works normally for non-@letter args
 
 _KNS_FILE="${KNS_STACK_FILE:-$HOME/.kns_stack}"
 
@@ -246,6 +250,65 @@ swapns() {
   _kns_save
   _kns_switch "$target"
   echo "swapped: now in '$target', pushed '$cur'  (stack depth: ${#_KNS_STACK[@]})"
+}
+
+# ---------------------------------------------------------------------------
+# Switch: jump to a stack letter's namespace without modifying the stack
+# ---------------------------------------------------------------------------
+
+switchns() {
+  if [[ -z "$1" ]]; then
+    echo "usage: switchns <letter>  (e.g. switchns b)" >&2
+    return 1
+  fi
+  local arg="$1"
+  # Accept a bare letter (a-z) and resolve it via the stack
+  if [[ "$arg" =~ ^[a-z]$ ]]; then
+    arg="@$arg"
+  fi
+  local ns
+  ns=$(_kns_resolve "$arg") || return 1
+  _kns_switch "$ns"
+  echo "switched to '$ns'  (stack unchanged)"
+}
+
+# ---------------------------------------------------------------------------
+# Move: swap two stack entries by letter without changing the current ns
+# ---------------------------------------------------------------------------
+
+movens() {
+  if [[ -z "$1" || -z "$2" ]]; then
+    echo "usage: movens <letter> <letter>  (e.g. movens a c)" >&2
+    return 1
+  fi
+  _kns_load
+  local top=$(( ${#_KNS_STACK[@]} - 1 ))
+
+  _movens_resolve() {
+    local letter="$1"
+    if [[ ! "$letter" =~ ^[a-z]$ ]]; then
+      echo "kns: '$letter' is not a valid stack letter" >&2
+      return 1
+    fi
+    local offset
+    offset=$(_kns_letter_to_index "$letter")
+    local idx=$(( top - offset ))
+    if (( idx < 0 || idx > top )); then
+      echo "kns: '$letter' is out of range (stack depth: ${#_KNS_STACK[@]})" >&2
+      return 1
+    fi
+    printf '%d' "$idx"
+  }
+
+  local idx1 idx2
+  idx1=$(_movens_resolve "$1") || return 1
+  idx2=$(_movens_resolve "$2") || return 1
+
+  local tmp="${_KNS_STACK[$idx1]}"
+  _KNS_STACK[$idx1]="${_KNS_STACK[$idx2]}"
+  _KNS_STACK[$idx2]="$tmp"
+  _kns_save
+  echo "swapped $1 (${_KNS_STACK[$idx1]}) ↔ $2 (${_KNS_STACK[$idx2]})"
 }
 
 # ---------------------------------------------------------------------------

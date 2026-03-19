@@ -28,6 +28,37 @@ Pops the top, switches to it, and pushes your current namespace in its place. Ru
 ### `peekns`
 Prints the stack with letter labels (`a` = top, `b` = second, etc.).
 
+### `switchns <letter>`
+Switches to the namespace at the given stack letter without modifying the stack. Useful for jumping to a namespace you want to work in while keeping the stack intact.
+
+```bash
+$ peekns
+a = staging  ← top
+b = dev
+c = prod
+
+$ switchns c
+switched to 'prod'  (stack unchanged)
+```
+
+### `movens <letter> <letter>`
+Swaps two stack entries by their letter positions without changing the current namespace. Useful for reordering the stack.
+
+```bash
+$ peekns
+a = staging  ← top
+b = dev
+c = prod
+
+$ movens a c
+swapped a (prod) ↔ c (staging)
+
+$ peekns
+a = prod  ← top
+b = dev
+c = staging
+```
+
 ### `clearns`
 Empties the stack.
 
@@ -69,6 +100,20 @@ swapped: now in 'staging', pushed 'prod'  (stack depth: 2)
 
 $ swapns                  # flip back
 swapped: now in 'prod', pushed 'staging'  (stack depth: 2)
+
+$ pushns monitoring
+pushed 'monitoring'  (stack depth: 3)
+
+$ peekns
+a = monitoring  ← top
+b = staging
+c = prod
+
+$ switchns c              # jump to prod, stack stays the same
+switched to 'prod'  (stack unchanged)
+
+$ movens a c              # reorder: swap monitoring and prod
+swapped a (prod) ↔ c (monitoring)
 ```
 
 ## Notes
