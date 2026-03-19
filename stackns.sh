@@ -7,14 +7,10 @@
 #   pushns              Push current context namespace onto stack
 #   pushns foo          Push 'foo' onto stack and switch to it
 #   popns               Pop top namespace, switch to it
-#   swapns              Swap top of stack with current namespace
-#   switchns <letter>   Switch to a stack entry's namespace (stack unchanged)
-#   movens <l1> <l2>    Swap two stack entries by letter (namespace unchanged)
 #   peekns              Show the stack (a=top, b=top-1, ...)
-#   clearns             Clear the entire stack
-#   k get pods -n @a    Equivalent to: kubectl get pods -n <top of stack>
-#   k get pods -n @c    Equivalent to: kubectl get pods -n <third on stack>
-#   k get pods -n foo   Works normally for non-@letter args
+#   k get pods -n a     Equivalent to: kubectl get pods -n <top of stack>
+#   k get pods -n c     Equivalent to: kubectl get pods -n <third on stack>
+#   k get pods -n foo   Works normally for non-single-letter args
 
 _KNS_FILE="${KNS_STACK_FILE:-$HOME/.kns_stack}"
 
@@ -309,6 +305,33 @@ movens() {
   _KNS_STACK[$idx2]="$tmp"
   _kns_save
   echo "swapped $1 (${_KNS_STACK[$idx1]}) ↔ $2 (${_KNS_STACK[$idx2]})"
+}
+
+# ---------------------------------------------------------------------------
+# Rotate: move bottom to top (default), or top to bottom with -r
+# ---------------------------------------------------------------------------
+
+rotatens() {
+  _kns_load
+  if (( ${#_KNS_STACK[@]} < 2 )); then
+    echo "kns: need at least 2 entries to rotate" >&2
+    return 1
+  fi
+  if [[ "$1" == "-r" ]]; then
+    # Reverse: move top to bottom
+    local top=$(( ${#_KNS_STACK[@]} - 1 ))
+    local val="${_KNS_STACK[$top]}"
+    unset '_KNS_STACK[$top]'
+    _KNS_STACK=("$val" "${_KNS_STACK[@]}")
+  else
+    # Default: move bottom to top
+    local val="${_KNS_STACK[0]}"
+    _KNS_STACK=("${_KNS_STACK[@]:1}")
+    _KNS_STACK+=("$val")
+  fi
+  _kns_save
+  echo "rotated stack:"
+  peekns
 }
 
 # ---------------------------------------------------------------------------
