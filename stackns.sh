@@ -10,6 +10,8 @@
 #   peekns              Show the stack (a=top, b=top-1, ...)
 #   k get pods -n a     Equivalent to: kubectl get pods -n <top of stack>
 #   k get pods -n c     Equivalent to: kubectl get pods -n <third on stack>
+#   rotatens            Rotate stack: bottom → top
+#   rotatens -r         Rotate stack: top → bottom
 #   k get pods -n foo   Works normally for non-single-letter args
 
 _KNS_FILE="${KNS_STACK_FILE:-$HOME/.kns_stack}"
@@ -342,6 +344,16 @@ clearns() {
   _KNS_STACK=()
   _kns_save
   echo "kns: stack cleared"
+}
+
+currentns() {
+  local ns
+  ns=$(_kns_current)
+  if [[ -z "$ns" ]]; then
+    echo "kns: no namespace set in current context" >&2
+    return 1
+  fi
+  echo "$ns"
 }
 
 # ---------------------------------------------------------------------------
