@@ -10,6 +10,8 @@
 #   peekns              Show the stack (a=top, b=top-1, ...)
 #   k get pods -n a     Equivalent to: kubectl get pods -n <top of stack>
 #   k get pods -n c     Equivalent to: kubectl get pods -n <third on stack>
+#   currentns           Print the current context's namespace
+#   removens foo        Remove all instances of 'foo' from the stack
 #   rotatens            Rotate stack: bottom → top
 #   rotatens -r         Rotate stack: top → bottom
 #   k get pods -n foo   Works normally for non-single-letter args
@@ -344,6 +346,31 @@ clearns() {
   _KNS_STACK=()
   _kns_save
   echo "kns: stack cleared"
+}
+
+removens() {
+  if [[ -z "$1" ]]; then
+    echo "usage: removens <namespace>" >&2
+    return 1
+  fi
+  _kns_load
+  local target="$1"
+  local new_stack=()
+  local count=0
+  for ns in "${_KNS_STACK[@]}"; do
+    if [[ "$ns" == "$target" ]]; then
+      (( count++ ))
+    else
+      new_stack+=("$ns")
+    fi
+  done
+  if (( count == 0 )); then
+    echo "kns: '$target' not found in stack" >&2
+    return 1
+  fi
+  _KNS_STACK=("${new_stack[@]}")
+  _kns_save
+  echo "removed $count instance(s) of '$target'  (stack depth: ${#_KNS_STACK[@]})"
 }
 
 currentns() {
